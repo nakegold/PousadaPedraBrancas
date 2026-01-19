@@ -146,6 +146,12 @@ app.delete("/vouchers/:id", async (req, res) => {
   res.json({ success: true });
 });
 
+function formatarDataBR(data) {
+  if (!data) return "";
+  const d = new Date(data);
+  return d.toLocaleDateString("pt-BR");
+}
+
 // GERAR PDF DO VOUCHER
 app.get("/vouchers/:id/pdf", async (req, res) => {
   const { id } = req.params;
@@ -205,8 +211,8 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
   doc.font("Helvetica-Bold").text(data.operacao, 320, y0 + 24);
   doc.font("Helvetica");
 
-  doc.text(`Check-in: ${data.checkin}`, 55, y0 + 50);
-  doc.text(`Check-out: ${data.checkout}`, 320, y0 + 50);
+  doc.text(`Check-in: ${formatarDataBR(data.checkin)}`, 55, y0 + 50);
+  doc.text(`Check-out: ${formatarDataBR(data.checkout)}`, 320, y0 + 50);
 
   doc.moveDown(4);
 
