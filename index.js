@@ -16,11 +16,13 @@ const supabase = createClient(
 
 console.log("Index.js iniciou");
 
+/* ================== ROOT ================== */
+
 app.get("/", (req, res) => {
   res.send("API de vouchers online");
 });
 
-/* ================= FORNECEDORES ================= */
+/* ================== FORNECEDORES ================== */
 
 app.get("/fornecedores", async (req, res) => {
   const { data, error } = await supabase
@@ -33,12 +35,11 @@ app.get("/fornecedores", async (req, res) => {
 });
 
 app.post("/fornecedores", async (req, res) => {
-  const fornecedor = req.body;
-
   const { data, error } = await supabase
     .from("fornecedores")
-    .insert([fornecedor])
-    .select();
+    .insert([req.body])
+    .select()
+    .single();
 
   if (error) {
     console.error("ERRO INSERT FORNECEDOR:", error);
@@ -48,22 +49,12 @@ app.post("/fornecedores", async (req, res) => {
   res.json(data);
 });
 
-app.delete("/fornecedores/:id", async (req, res) => {
-  const { id } = req.params;
-
-  const { error } = await supabase.from("fornecedores").delete().eq("id", id);
-
-  if (error) return res.status(500).json(error);
-  res.json({ success: true });
-});
-
 app.put("/fornecedores/:id", async (req, res) => {
   const { id } = req.params;
-  const dados = req.body;
 
   const { data, error } = await supabase
     .from("fornecedores")
-    .update(dados)
+    .update(req.body)
     .eq("id", id)
     .select()
     .single();
@@ -76,7 +67,77 @@ app.put("/fornecedores/:id", async (req, res) => {
   res.json(data);
 });
 
-/* ================= VOUCHERS ================= */
+app.delete("/fornecedores/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const { error } = await supabase
+    .from("fornecedores")
+    .delete()
+    .eq("id", id);
+
+  if (error) return res.status(500).json(error);
+  res.json({ success: true });
+});
+
+/* ================== OPERAÇÕES ================== */
+
+app.post("/operacoes", async (req, res) => {
+  const { data, error } = await supabase
+    .from("fornecedores_operacao")
+    .insert([req.body])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("ERRO INSERT OPERAÇÃO:", error);
+    return res.status(500).json(error);
+  }
+
+  res.json(data);
+});
+
+app.get("/operacoes", async (req, res) => {
+  const { mes, ano } = req.query;
+
+  if (!mes || !ano) {
+    return res.status(400).json({ error: "mes e ano são obrigatórios" });
+  }
+
+  const inicio = new Date(ano, mes - 1, 1).toISOString().slice(0, 10);
+  const fim = new Date(ano, mes, 0).toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("fornecedores_operacao")
+    .select("*")
+    .gte("data_inicio", inicio)
+    .lte("data_fim", fim)
+    .order("data_inicio");
+
+  if (error) {
+    console.error("ERRO LISTAR OPERAÇÕES:", error);
+    return res.status(500).json(error);
+  }
+
+  res.json(data);
+});
+
+app.delete("/operacoes/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const { error } = await supabase
+    .from("fornecedores_operacao")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("ERRO DELETE OPERAÇÃO:", error);
+    return res.status(500).json(error);
+  }
+
+  res.json({ success: true });
+});
+
+/* ================== VOUCHERS ================== */
 
 app.get("/vouchers", async (req, res) => {
   const { data, error } = await supabase
@@ -89,12 +150,11 @@ app.get("/vouchers", async (req, res) => {
 });
 
 app.post("/vouchers", async (req, res) => {
-  const voucher = req.body;
-
   const { data, error } = await supabase
     .from("voucher_PousadaPedraBranca")
-    .insert([voucher])
-    .select();
+    .insert([req.body])
+    .select()
+    .single();
 
   if (error) {
     console.error("ERRO INSERT:", error);
@@ -106,11 +166,10 @@ app.post("/vouchers", async (req, res) => {
 
 app.put("/vouchers/:id", async (req, res) => {
   const { id } = req.params;
-  const dados = req.body;
 
   const { data, error } = await supabase
     .from("voucher_PousadaPedraBranca")
-    .update(dados)
+    .update(req.body)
     .eq("id", id)
     .select()
     .single();
@@ -127,196 +186,49 @@ app.delete("/vouchers/:id", async (req, res) => {
     .delete()
     .eq("id", id);
 
-  if (error) {
-    console.error("ERRO DELETE:", error);
-    return res.status(500).json(error);
-  }
-
+  if (error) return res.status(500).json(error);
   res.json({ success: true });
 });
 
-/* ================= PDF ================= */
+/* ================== PDF ================== */
 
 function formatarDataBR(data) {
   if (!data) return "";
-  const d = new Date(data);
-  return d.toLocaleDateString("pt-BR");
+  return new Date(data).toLocaleDateString("pt-BR");
 }
 
 app.get("/vouchers/:id/pdf", async (req, res) => {
   const { id } = req.params;
 
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("voucher_PousadaPedraBranca")
     .select("*")
     .eq("id", id)
     .single();
 
-  if (error || !data) {
-    return res.status(404).json({ error: "Voucher não encontrado" });
-  }
+  if (!data) return res.status(404).json({ error: "Voucher não encontrado" });
 
   const doc = new PDFDocument({ size: "A4", margin: 40 });
-
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", "inline; filename=voucher.pdf");
-
   doc.pipe(res);
 
-  const blue = "#1e6bd6";
-  const gray = "#f2f4f8";
-  const border = "#d6dbe3";
+  doc.fontSize(16).text("Voucher de Hospedagem", { align: "center" });
+  doc.moveDown();
 
-  /* ===== HEADER ===== */
+  doc.fontSize(11);
+  doc.text(`Empresa: ${data.empresa}`);
+  doc.text(`Operação: ${data.operacao}`);
+  doc.text(`Check-in: ${formatarDataBR(data.checkin)}`);
+  doc.text(`Check-out: ${formatarDataBR(data.checkout)}`);
 
-  doc.image("logo.png", 40, 25, { width: 110 });
-
-  doc.fontSize(16).fillColor(blue).text("Voucher de Hospedagem", 200, 35);
-  doc.fontSize(9).fillColor("#555").text("Reserva Confirmada", 200, 55);
-
-  doc.moveTo(40, 85).lineTo(555, 85).strokeColor(border).stroke();
-  doc.moveDown(1.5);
-
-  /* ===== DADOS ===== */
-
-  const y0 = doc.y;
-
-  doc.roundedRect(40, y0, 515, 70, 8).fillAndStroke(gray, border);
-
-  doc.fillColor("#000").fontSize(10);
-
-  doc.text("Empresa:", 55, y0 + 10);
-  doc.font("Helvetica-Bold").text(data.empresa || "", 110, y0 + 10);
-  doc.font("Helvetica");
-
-  doc.text("Operação:", 320, y0 + 10);
-  doc.font("Helvetica-Bold").text(data.operacao || "", 395, y0 + 10);
-  doc.font("Helvetica");
-
-  doc.text(`Check-in: ${formatarDataBR(data.checkin)}`, 55, y0 + 38);
-  doc.text(`Check-out: ${formatarDataBR(data.checkout)}`, 320, y0 + 38);
-
-  doc.y = y0 + 85;
-
-  /* ===== HÓSPEDES ===== */
-
-  doc.fillColor(blue).fontSize(12).text("Hóspedes");
-  doc.moveDown(0.3);
-
-  const hospedesTexto = (data.hospedes || [])
-    .map((h, i) => `${i + 1}. ${h}`)
-    .join("\n");
-
-  const alturaHospedes = doc.heightOfString(hospedesTexto, { width: 480 });
-
-  const yH = doc.y;
-
-  doc.roundedRect(40, yH, 515, alturaHospedes + 24, 8).fillAndStroke(gray, border);
-  doc.fillColor("#000").fontSize(10).text(hospedesTexto, 55, yH + 10, { width: 480 });
-
-  const acom = data.acomodacoes || {};
-
-  doc.text(
-    `Acomodações: Single ${acom.single || 0} | Double ${acom.double || 0} | Triple ${acom.triple || 0}`,
-    55,
-    yH + alturaHospedes + 12
-  );
-
-  doc.y = yH + alturaHospedes + 35;
-
-  /* ===== HOTEL / RESTAURANTE ===== */
-
-  doc.fillColor(blue).fontSize(12).text("Hotel", 40);
-  doc.text("Restaurante", 300, doc.y - 14);
-
-  doc.moveDown(0.3);
-
-  const yHR = doc.y;
-
-  const hotelTexto =
-    `${data.hotel_nome || ""}\n` +
-    `Endereço: ${data.hotel_endereco || ""}\n` +
-    `Café: ${data.hotel_cafe || ""}\n` +
-    `Lavanderia: ${data.hotel_lavanderia || ""}`;
-
-  const hHotel = doc.heightOfString(hotelTexto, { width: 210 });
-
-  doc.roundedRect(40, yHR, 240, hHotel + 18, 8).fillAndStroke(gray, border);
-  doc.fillColor("#000").fontSize(10).text(hotelTexto, 55, yHR + 10, { width: 210 });
-
-  const restTexto =
-    `${data.restaurante_nome || ""}\n` +
-    `Horário: ${data.restaurante_horario || ""}\n` +
-    `Endereço: ${data.restaurante_endereco || ""}`;
-
-  const hRest = doc.heightOfString(restTexto, { width: 220 });
-
-  doc.roundedRect(300, yHR, 255, hRest + 18, 8).fillAndStroke(gray, border);
-  doc.fillColor("#000").fontSize(10).text(restTexto, 315, yHR + 10, { width: 220 });
-
-  doc.y = Math.max(yHR + hHotel, yHR + hRest) + 35;
-
-  /* ===== FATURAMENTO ===== */
-
-  doc.fillColor(blue).fontSize(12).text("Faturamento");
-  doc.moveDown(0.3);
-
-  const yF = doc.y;
-
-  doc.roundedRect(40, yF, 515, 35, 8).fillAndStroke(gray, border);
-  doc.fillColor("#000").fontSize(10).text(
-    data.faturado_empresa
-      ? `Faturado para: ${data.empresa_faturada || data.empresa}`
-      : "Não faturado para empresa",
-    55,
-    yF + 12
-  );
-
-  doc.y = yF + 45;
-
-  /* ===== CONTATO ===== */
-
-  doc.fillColor(blue).fontSize(12).text("Contato");
-  doc.moveDown(0.3);
-
-  const yC = doc.y;
-
-  doc.roundedRect(40, yC, 515, 45, 8).fillAndStroke(gray, border);
-  doc.fillColor("#000").fontSize(10);
-
-  doc.text(`Reserva: ${data.responsavel_reserva || ""}`, 55, yC + 10);
-  doc.text(`Operacional: ${data.responsavel_operacional || ""}`, 55, yC + 24);
-  doc.text(`${data.email_contato || ""} • ${data.telefone_contato || ""}`, 320, yC + 18);
-
-  doc.y = yC + 60;
-
-  /* ===== OBSERVAÇÕES ===== */
-
-  if (data.observacoes) {
-    doc.fillColor(blue).fontSize(12).text("Observações");
-    doc.moveDown(0.3);
-
-    const hObs = doc.heightOfString(data.observacoes, { width: 480 });
-
-    const yO = doc.y;
-
-    doc.roundedRect(40, yO, 515, hObs + 18, 8).fillAndStroke(gray, border);
-    doc.fillColor("#000").fontSize(10).text(data.observacoes, 55, yO + 10, { width: 480 });
-  }
-
-  /* ===== RODAPÉ ===== */
-
-  doc.fontSize(8).fillColor("#777").text(
-    `Gerado em ${new Date().toLocaleString("pt-BR")}`,
-    40,
-    800,
-    { align: "center", width: 515 }
-  );
+  doc.moveDown();
+  (data.hospedes || []).forEach((h, i) => doc.text(`${i + 1}. ${h}`));
 
   doc.end();
 });
 
-/* ================= SERVER ================= */
+/* ================== START ================== */
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("Servidor rodando na porta", process.env.PORT || 3000);
