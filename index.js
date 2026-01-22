@@ -191,6 +191,11 @@ app.delete("/vouchers/:id", async (req, res) => {
 });
 
 /* ================== PDF ================== */
+function formatarDataBR(data) {
+  if (!data) return "";
+  const d = new Date(data);
+  return d.toLocaleDateString("pt-BR");
+}
 
 app.get("/vouchers/:id/pdf", async (req, res) => {
   const { id } = req.params;
@@ -218,156 +223,149 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
 
   /* ===== HEADER ===== */
 
-  doc.image("logo.png", 40, 30, { width: 120 });
+  doc.image("logo.png", 40, 25, { width: 110 });
 
-  doc
-    .fontSize(18)
-    .fillColor(blue)
-    .text("Voucher de Hospedagem", 200, 40);
+  doc.fontSize(16).fillColor(blue).text("Voucher de Hospedagem", 200, 35);
+  doc.fontSize(9).fillColor("#555").text("Reserva Confirmada", 200, 55);
 
-  doc
-    .fontSize(10)
-    .fillColor("#555")
-    .text("Reserva Confirmada", 200, 65);
+  doc.moveTo(40, 85).lineTo(555, 85).strokeColor(border).stroke();
+  doc.moveDown(1.5);
 
-  doc.moveTo(40, 95).lineTo(555, 95).strokeColor(border).stroke();
-
-  doc.moveDown(2);
-
-  /* ===== BLOCO PRINCIPAL ===== */
+  /* ===== DADOS ===== */
 
   const y0 = doc.y;
 
-  doc.roundedRect(40, y0, 515, 85, 8).fillAndStroke(gray, border);
+  doc.roundedRect(40, y0, 515, 70, 8).fillAndStroke(gray, border);
 
-  doc.fillColor("#000").fontSize(11);
+  doc.fillColor("#000").fontSize(10);
 
-  doc.text("Empresa", 55, y0 + 10);
-  doc.font("Helvetica-Bold").text(data.empresa, 55, y0 + 24);
+  doc.text("Empresa:", 55, y0 + 10);
+  doc.font("Helvetica-Bold").text(data.empresa || "", 110, y0 + 10);
   doc.font("Helvetica");
 
-  doc.text("Operação", 320, y0 + 10);
-  doc.font("Helvetica-Bold").text(data.operacao, 320, y0 + 24);
+  doc.text("Operação:", 320, y0 + 10);
+  doc.font("Helvetica-Bold").text(data.operacao || "", 395, y0 + 10);
   doc.font("Helvetica");
 
-  doc.text(`Check-in: ${data.checkin}`, 55, y0 + 50);
-  doc.text(`Check-out: ${data.checkout}`, 320, y0 + 50);
+  doc.text(`Check-in: ${formatarDataBR(data.checkin)}`, 55, y0 + 38);
+  doc.text(`Check-out: ${formatarDataBR(data.checkout)}`, 320, y0 + 38);
 
-  doc.moveDown(4);
+  doc.y = y0 + 85;
 
-  /* ===== HÓSPEDES / ACOMODAÇÕES ===== */
+  /* ===== HÓSPEDES ===== */
 
-  doc.fillColor(blue).fontSize(13).text("Hóspedes");
-  doc.moveDown(0.5);
+  doc.fillColor(blue).fontSize(12).text("Hóspedes");
+  doc.moveDown(0.3);
+
+  const hospedesTexto = (data.hospedes || [])
+    .map((h, i) => `${i + 1}. ${h}`)
+    .join("\n");
+
+  const alturaHospedes = doc.heightOfString(hospedesTexto, { width: 480 });
 
   const yH = doc.y;
 
-  doc.roundedRect(40, yH, 515, 75, 8).fillAndStroke(gray, border);
-  doc.fillColor("#000").fontSize(11);
-
-  let yList = yH + 10;
-
-  (data.hospedes || []).forEach((h, i) => {
-    doc.text(`${i + 1}. ${h}`, 55, yList);
-    yList += 14;
-  });
+  doc.roundedRect(40, yH, 515, alturaHospedes + 24, 8).fillAndStroke(gray, border);
+  doc.fillColor("#000").fontSize(10).text(hospedesTexto, 55, yH + 10, { width: 480 });
 
   const acom = data.acomodacoes || {};
+
   doc.text(
     `Acomodações: Single ${acom.single || 0} | Double ${acom.double || 0} | Triple ${acom.triple || 0}`,
     55,
-    yList + 4
+    yH + alturaHospedes + 12
   );
 
-  doc.moveDown(4);
+  doc.y = yH + alturaHospedes + 35;
 
   /* ===== HOTEL / RESTAURANTE ===== */
 
-  doc.fillColor(blue).fontSize(13).text("Hotel", 40);
-  doc.text("Restaurante", 300, doc.y - 18);
+  doc.fillColor(blue).fontSize(12).text("Hotel", 40);
+  doc.text("Restaurante", 300, doc.y - 14);
 
-  doc.moveDown(0.5);
+  doc.moveDown(0.3);
 
   const yHR = doc.y;
 
-  // HOTEL
-  doc.roundedRect(40, yHR, 240, 95, 8).fillAndStroke(gray, border);
-  doc.fillColor("#000").fontSize(11);
+  const hotelTexto =
+    `${data.hotel_nome || ""}\n` +
+    `Endereço: ${data.hotel_endereco || ""}\n` +
+    `Café: ${data.hotel_cafe || ""}\n` +
+    `Lavanderia: ${data.hotel_lavanderia || ""}`;
 
-  doc.font("Helvetica-Bold").text(data.hotel_nome, 55, yHR + 10);
-  doc.font("Helvetica");
-  doc.text(`Endereço: ${data.hotel_endereco}`, 55, yHR + 28);
-  doc.text(`Café: ${data.hotel_cafe}`, 55, yHR + 46);
-  doc.text(`Lavanderia: ${data.hotel_lavanderia}`, 55, yHR + 64);
+  const hHotel = doc.heightOfString(hotelTexto, { width: 210 });
 
-  // RESTAURANTE
-  doc.roundedRect(300, yHR, 255, 95, 8).fillAndStroke(gray, border);
+  doc.roundedRect(40, yHR, 240, hHotel + 18, 8).fillAndStroke(gray, border);
+  doc.fillColor("#000").fontSize(10).text(hotelTexto, 55, yHR + 10, { width: 210 });
 
-  doc.font("Helvetica-Bold").text(data.restaurante_nome, 315, yHR + 10);
-  doc.font("Helvetica");
-  doc.text(`Horário: ${data.restaurante_horario}`, 315, yHR + 28);
-  doc.text(`Endereço: ${data.restaurante_endereco}`, 315, yHR + 46);
+  const restTexto =
+    `${data.restaurante_nome || ""}\n` +
+    `Horário: ${data.restaurante_horario || ""}\n` +
+    `Endereço: ${data.restaurante_endereco || ""}`;
 
-  doc.moveDown(4);
+  const hRest = doc.heightOfString(restTexto, { width: 220 });
+
+  doc.roundedRect(300, yHR, 255, hRest + 18, 8).fillAndStroke(gray, border);
+  doc.fillColor("#000").fontSize(10).text(restTexto, 315, yHR + 10, { width: 220 });
+
+  doc.y = Math.max(yHR + hHotel, yHR + hRest) + 35;
 
   /* ===== FATURAMENTO ===== */
 
-  doc.fillColor(blue).fontSize(13).text("Faturamento");
-  doc.moveDown(0.5);
+  doc.fillColor(blue).fontSize(12).text("Faturamento");
+  doc.moveDown(0.3);
 
   const yF = doc.y;
 
-  doc.roundedRect(40, yF, 515, 40, 8).fillAndStroke(gray, border);
-  doc.fillColor("#000").fontSize(11);
-
-  doc.text(
+  doc.roundedRect(40, yF, 515, 35, 8).fillAndStroke(gray, border);
+  doc.fillColor("#000").fontSize(10).text(
     data.faturado_empresa
       ? `Faturado para: ${data.empresa_faturada || data.empresa}`
       : "Não faturado para empresa",
     55,
-    yF + 14
+    yF + 12
   );
 
-  doc.moveDown(3);
+  doc.y = yF + 45;
 
   /* ===== CONTATO ===== */
 
-  doc.fillColor(blue).fontSize(13).text("Contato");
-  doc.moveDown(0.5);
+  doc.fillColor(blue).fontSize(12).text("Contato");
+  doc.moveDown(0.3);
 
   const yC = doc.y;
 
-  doc.roundedRect(40, yC, 515, 60, 8).fillAndStroke(gray, border);
-  doc.fillColor("#000").fontSize(11);
+  doc.roundedRect(40, yC, 515, 45, 8).fillAndStroke(gray, border);
+  doc.fillColor("#000").fontSize(10);
 
-  doc.text(`Reserva: ${data.responsavel_reserva}`, 55, yC + 10);
-  doc.text(`Operacional: ${data.responsavel_operacional}`, 55, yC + 26);
-  doc.text(`${data.email_contato} • ${data.telefone_contato}`, 55, yC + 42);
+  doc.text(`Reserva: ${data.responsavel_reserva || ""}`, 55, yC + 10);
+  doc.text(`Operacional: ${data.responsavel_operacional || ""}`, 55, yC + 24);
+  doc.text(`${data.email_contato || ""} • ${data.telefone_contato || ""}`, 320, yC + 18);
 
-  doc.moveDown(3);
+  doc.y = yC + 60;
 
   /* ===== OBSERVAÇÕES ===== */
 
   if (data.observacoes) {
-    doc.fillColor(blue).fontSize(13).text("Observações");
-    doc.moveDown(0.5);
+    doc.fillColor(blue).fontSize(12).text("Observações");
+    doc.moveDown(0.3);
+
+    const hObs = doc.heightOfString(data.observacoes, { width: 480 });
 
     const yO = doc.y;
 
-    doc.roundedRect(40, yO, 515, 55, 8).fillAndStroke(gray, border);
-    doc.fillColor("#000").fontSize(11);
-    doc.text(data.observacoes, 55, yO + 12, { width: 480 });
+    doc.roundedRect(40, yO, 515, hObs + 18, 8).fillAndStroke(gray, border);
+    doc.fillColor("#000").fontSize(10).text(data.observacoes, 55, yO + 10, { width: 480 });
   }
 
   /* ===== RODAPÉ ===== */
 
-  doc.moveDown(3);
-  doc
-    .fontSize(9)
-    .fillColor("#777")
-    .text(`Gerado em ${new Date().toLocaleString("pt-BR")}`, {
-      align: "center",
-    });
+  doc.fontSize(8).fillColor("#777").text(
+    `Gerado em ${new Date().toLocaleString("pt-BR")}`,
+    40,
+    800,
+    { align: "center", width: 515 }
+  );
 
   doc.end();
 });
