@@ -371,12 +371,6 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
 
   doc.end();
 });
-
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Servidor rodando na porta", process.env.PORT || 3000);
-});
-
-
 /* ================== START ================== */
 
 app.listen(process.env.PORT || 3000, () => {
