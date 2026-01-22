@@ -192,6 +192,7 @@ app.delete("/vouchers/:id", async (req, res) => {
 });
 
 /* ================== PDF ================== */
+
 function formatarDataBR(data) {
   if (!data) return "";
   const d = new Date(data);
@@ -263,7 +264,6 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
     .join("\n");
 
   const alturaHospedes = doc.heightOfString(hospedesTexto, { width: 480 });
-
   const yH = doc.y;
 
   doc.roundedRect(40, yH, 515, alturaHospedes + 24, 8).fillAndStroke(gray, border);
@@ -352,20 +352,19 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
     doc.moveDown(0.3);
 
     const hObs = doc.heightOfString(data.observacoes, { width: 480 });
-
     const yO = doc.y;
 
     doc.roundedRect(40, yO, 515, hObs + 18, 8).fillAndStroke(gray, border);
     doc.fillColor("#000").fontSize(10).text(data.observacoes, 55, yO + 10, { width: 480 });
+
+    doc.y = yO + hObs + 30;
   }
 
-    /* ===== RODAPÉ ===== */
+  /* ===== RODAPÉ ===== */
 
   const footerText = `Gerado em ${new Date().toLocaleString("pt-BR")}`;
-
   const footerHeight = doc.heightOfString(footerText, { width: 515 });
 
-  // Se não couber na página atual, cria nova página
   if (doc.y + footerHeight + 20 > doc.page.height - doc.page.margins.bottom) {
     doc.addPage();
   }
@@ -378,9 +377,12 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
   );
 
   doc.end();
+});
 
-  //excel de fornecedores
-  app.get("/excel/fornecedores", async (req, res) => {
+/* ================== EXCEL ================== */
+
+// excel fornecedores
+app.get("/excel/fornecedores", async (req, res) => {
   const { data, error } = await supabase
     .from("fornecedores")
     .select("*")
@@ -416,8 +418,8 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
   res.end();
 });
 
-//excel de fornecedores de operação
-  app.get("/excel/operacoes", async (req, res) => {
+// excel operações
+app.get("/excel/operacoes", async (req, res) => {
   const { data, error } = await supabase
     .from("fornecedores_operacao")
     .select("*")
