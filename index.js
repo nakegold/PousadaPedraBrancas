@@ -358,17 +358,26 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
     doc.fillColor("#000").fontSize(10).text(data.observacoes, 55, yO + 10, { width: 480 });
   }
 
-  /* ===== RODAPÉ ===== */
+    /* ===== RODAPÉ ===== */
+
+  const footerText = `Gerado em ${new Date().toLocaleString("pt-BR")}`;
+
+  const footerHeight = doc.heightOfString(footerText, { width: 515 });
+
+  // Se não couber na página atual, cria nova página
+  if (doc.y + footerHeight + 20 > doc.page.height - doc.page.margins.bottom) {
+    doc.addPage();
+  }
 
   doc.fontSize(8).fillColor("#777").text(
-    `Gerado em ${new Date().toLocaleString("pt-BR")}`,
+    footerText,
     40,
-    800,
+    doc.y + 10,
     { align: "center", width: 515 }
   );
 
   doc.end();
-});
+
 /* ================== START ================== */
 
 app.listen(process.env.PORT || 3000, () => {
