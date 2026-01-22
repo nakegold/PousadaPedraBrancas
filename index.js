@@ -4,6 +4,7 @@ const PDFDocument = require("pdfkit");
 const express = require("express");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
+const ExcelJS = require("exceljs");
 
 const app = express();
 app.use(cors());
@@ -377,6 +378,86 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
   );
 
   doc.end();
+
+  //excel de fornecedores
+  app.get("/excel/fornecedores", async (req, res) => {
+  const { data, error } = await supabase
+    .from("fornecedores")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) return res.status(500).json(error);
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Fornecedores");
+
+  sheet.columns = [
+    { header: "Nome", key: "nome_fornecedor", width: 30 },
+    { header: "Tipo", key: "tipo_servico", width: 15 },
+    { header: "Município", key: "municipio", width: 20 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Telefone", key: "telefone", width: 20 },
+    { header: "Banco", key: "banco_nome", width: 20 },
+    { header: "Agência", key: "agencia", width: 15 },
+    { header: "Conta", key: "conta", width: 15 },
+    { header: "Pix", key: "chave_pix", width: 25 },
+    { header: "Condição Pgto", key: "condicao_pagamento", width: 25 },
+  ];
+
+  data.forEach((f) => sheet.addRow(f));
+
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+  res.setHeader("Content-Disposition", "attachment; filename=fornecedores.xlsx");
+
+  await workbook.xlsx.write(res);
+  res.end();
+});
+
+//excel de fornecedores de operação
+  app.get("/excel/operacoes", async (req, res) => {
+  const { data, error } = await supabase
+    .from("fornecedores_operacao")
+    .select("*")
+    .order("mes", { ascending: true });
+
+  if (error) return res.status(500).json(error);
+
+  const workbook = new ExcelJS.Workbook();
+
+  const meses = {
+    1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+    5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+    9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+  };
+
+  Object.entries(meses).forEach(([num, nomeMes]) => {
+    const sheet = workbook.addWorksheet(nomeMes);
+
+    sheet.columns = [
+      { header: "Nome", key: "nome", width: 30 },
+      { header: "Endereço", key: "endereco", width: 35 },
+      { header: "Data Início", key: "data_inicio", width: 15 },
+      { header: "Data Fim", key: "data_fim", width: 15 },
+      { header: "Ano", key: "ano", width: 10 },
+    ];
+
+    data
+      .filter((o) => String(o.mes) === String(num))
+      .forEach((o) => sheet.addRow(o));
+  });
+
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+  res.setHeader("Content-Disposition", "attachment; filename=operacoes_2026.xlsx");
+
+  await workbook.xlsx.write(res);
+  res.end();
+});
 
 /* ================== START ================== */
 
