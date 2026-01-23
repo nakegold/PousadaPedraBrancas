@@ -362,22 +362,27 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
 
   /* ===== RODAPÉ ===== */
 
-  const footerText = `Gerado em ${new Date().toLocaleString("pt-BR")}`;
-  const footerHeight = doc.heightOfString(footerText, { width: 515 });
+const footerText = `Gerado em ${new Date().toLocaleString("pt-BR")}`;
+const footerHeight = doc.heightOfString(footerText, { width: 515 });
 
-  if (doc.y + footerHeight + 20 > doc.page.height - doc.page.margins.bottom) {
-    doc.addPage();
-  }
+// posição fixa no fim da página
+const footerY =
+  doc.page.height - doc.page.margins.bottom - footerHeight;
 
-  doc.fontSize(8).fillColor("#777").text(
-    footerText,
-    40,
-    doc.y + 10,
-    { align: "center", width: 515 }
-  );
+// se o conteúdo já passou do espaço do rodapé, cria nova página
+if (doc.y > footerY - 10) {
+  doc.addPage();
+}
 
-  doc.end();
-});
+doc.fontSize(8).fillColor("#777").text(
+  footerText,
+  40,
+  footerY,
+  { align: "center", width: 515 }
+);
+
+doc.end();
+
 
 /* ================== EXCEL ================== */
 
