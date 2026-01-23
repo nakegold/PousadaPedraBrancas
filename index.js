@@ -446,6 +446,10 @@ app.get("/excel/operacoes", async (req, res) => {
     sheet.columns = [
       { header: "Nome", key: "nome", width: 30 },
       { header: "Endereço", key: "endereco", width: 35 },
+
+      // ✅ NOVA COLUNA
+      { header: "Operação de Locação", key: "Operacao_Locacao", width: 25 },
+
       { header: "Data Início", key: "data_inicio", width: 15 },
       { header: "Data Fim", key: "data_fim", width: 15 },
       { header: "Ano", key: "ano", width: 10 },
@@ -460,7 +464,10 @@ app.get("/excel/operacoes", async (req, res) => {
     "Content-Type",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   );
-  res.setHeader("Content-Disposition", "attachment; filename=operacoes_2026.xlsx");
+  res.setHeader(
+    "Content-Disposition",
+    "attachment; filename=operacoes_2026.xlsx"
+  );
 
   await workbook.xlsx.write(res);
   res.end();
