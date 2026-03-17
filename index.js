@@ -447,6 +447,8 @@ doc.fontSize(8).fillColor("#777").text(
   { align: "center", width: 515 }
 );
 
+  doc.end();
+
 /* ================== EXCEL ================== */
 
 // excel fornecedores
