@@ -80,6 +80,71 @@ app.delete("/fornecedores/:id", async (req, res) => {
   res.json({ success: true });
 });
 
+/* ================== CLIENTES ================== */
+
+app.get("/clientes", async (req, res) => {
+  const { data, error } = await supabase
+    .from("clientes")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("ERRO LISTAR CLIENTES:", error);
+    return res.status(500).json(error);
+  }
+
+  res.json(data);
+});
+
+app.post("/clientes", async (req, res) => {
+  const { data, error } = await supabase
+    .from("clientes")
+    .insert([req.body])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("ERRO INSERT CLIENTE:", error);
+    return res.status(500).json(error);
+  }
+
+  res.json(data);
+});
+
+app.put("/clientes/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const { data, error } = await supabase
+    .from("clientes")
+    .update(req.body)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("ERRO UPDATE CLIENTE:", error);
+    return res.status(500).json(error);
+  }
+
+  res.json(data);
+});
+
+app.delete("/clientes/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const { error } = await supabase
+    .from("clientes")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("ERRO DELETE CLIENTE:", error);
+    return res.status(500).json(error);
+  }
+
+  res.json({ success: true });
+});
+
 /* ================== OPERAÇÕES ================== */
 
 app.post("/operacoes", async (req, res) => {
@@ -362,14 +427,15 @@ app.get("/vouchers/:id/pdf", async (req, res) => {
 
   /* ===== RODAPÉ ===== */
 
-const footerText = `Gerado em ${new Date().toLocaleString("pt-BR")}`;
+const footerText = `Gerado em ${new Date().toLocaleString("pt-BR", {
+  timeZone: "Europe/Berlin"
+})}`;
+
 const footerHeight = doc.heightOfString(footerText, { width: 515 });
 
-// posição fixa no fim da página
 const footerY =
   doc.page.height - doc.page.margins.bottom - footerHeight;
 
-// se o conteúdo já passou do espaço do rodapé, cria nova página
 if (doc.y > footerY - 10) {
   doc.addPage();
 }
@@ -380,9 +446,6 @@ doc.fontSize(8).fillColor("#777").text(
   footerY,
   { align: "center", width: 515 }
 );
-
-doc.end();
-});
 
 /* ================== EXCEL ================== */
 
@@ -473,6 +536,39 @@ app.get("/excel/operacoes", async (req, res) => {
   res.end();
 });
 
+  // excel clientes
+app.get("/excel/clientes", async (req, res) => {
+  const { data, error } = await supabase
+    .from("clientes")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) return res.status(500).json(error);
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Clientes");
+
+  sheet.columns = [
+    { header: "Cliente", key: "cliente", width: 30 },
+    { header: "CNPJ", key: "cnpj", width: 25 },
+    { header: "Período Faturamento", key: "periodo_faturamento", width: 25 },
+    { header: "Tarifa", key: "tarifa", width: 25 },
+    { header: "Valor Tarifa", key: "valor_tarifa", width: 20 },
+    { header: "Região", key: "regiao", width: 20 },
+  ];
+
+  data.forEach((c) => sheet.addRow(c));
+
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+  res.setHeader("Content-Disposition", "attachment; filename=clientes.xlsx");
+
+  await workbook.xlsx.write(res);
+  res.end();
+});
+  
 /* ================== START ================== */
 
 app.listen(process.env.PORT || 3000, () => {
